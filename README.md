@@ -10,7 +10,6 @@
 
 演示：
 ![](https://github.com/liouyang/AndroidThreadDown/tree/main/video/demo.gif)
-
 核心代码：
 
 ```
