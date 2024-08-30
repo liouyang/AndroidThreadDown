@@ -9,7 +9,7 @@
 #### 3.下载完毕后返回保存的file
 
 演示：
-![](https://github.com/liouyang/AndroidThreadDown/video/demo.gif)
+![](https://github.com/liouyang/AndroidThreadDown/tree/main/video/demo.gif)
 
 核心代码：
 
