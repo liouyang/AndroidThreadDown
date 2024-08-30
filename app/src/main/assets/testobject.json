@@ -1,0 +1,27 @@
+[
+  {
+    "name": "大兔子",
+    "iconUrl": "https://example.com/icon1.png",
+    "fileUrl": "https://test-videos.co.uk/bigbuckbunny/mp4/h264",
+    "fileMd5": "A1B2C3D4E5F67890ABCDEFFEDCBA9876",
+    "fileSize": 10485760,
+    "createDate": "2023-10-01 12:00:00"
+  },
+  {
+    "name": "辛特尔",
+    "iconUrl": "https://example.com/icon2.png",
+    "fileUrl": "https://media.xiph.org/mango/tears_of_steel_1080p.webm",
+    "fileMd5": "B1C2D3E4F567890A1B2C3D4E5F67890B",
+    "fileSize": 20485760,
+    "createDate": "2023-10-02 13:00:00"
+  },
+  {
+    "name": "钢铁之泪",
+    "iconUrl": "https://example.com/icon3.png",
+    "fileUrl": "https://test-videos.co.uk/bigbuckbunny/mp4/tearsofsteel",
+    "fileMd5": "C1D2E3F4567890A1B2C3D4E5F67890C1",
+    "fileSize": 30485760,
+    "createDate": "2023-10-03 14:00:00"
+  }
+
+]
