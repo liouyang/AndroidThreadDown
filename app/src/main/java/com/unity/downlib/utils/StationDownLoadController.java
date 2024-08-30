@@ -477,8 +477,6 @@ public class StationDownLoadController {
                 connection.setReadTimeout(10000); // 10秒读取超时
                 // 设置请求头信息
                 connection.setRequestProperty("Range", "bytes=" + start + "-" + end);  // 设置下载的区间
-                connection.setRequestProperty("key", "CBE0DFC4A49C453EAA84B49EE7B85F3B"); // 自定义 key 请求头
-                connection.setRequestProperty("Referer", "https://xr-cloud.rokid.com/"); // 设置 Referer 请求头
                 connection.setRequestMethod("GET");
                 connection.connect();
 
