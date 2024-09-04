@@ -18,6 +18,6 @@ public class MyApplication extends Application {
     public void onCreate() {
         super.onCreate();
         context=this;
-        StationDownLoadManager.attachApplication(context,true,"CBE0DFC4A49C453EAA84B49EE7B85F3B", "https://xr-cloud.rokid.com/");
+        StationDownLoadManager.attachApplication(context,true,"", "");
     }
 }
