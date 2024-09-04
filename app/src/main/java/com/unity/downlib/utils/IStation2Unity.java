@@ -1,7 +1,6 @@
 package com.unity.downlib.utils;
 
 
-import com.unity.downlib.bean.DownLoadBean;
 
 public interface IStation2Unity {
 

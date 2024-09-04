@@ -71,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
 
 
         stationDownLoadManager = new StationDownLoadManager();
-        stationDownLoadManager.initialize("");
+//        stationDownLoadManager.initialize("");
 
         StationDownLoadController.getInstance().registerDownloadActionListener(new StationDownLoadController.DownloadActionListener() {
 
@@ -151,10 +151,18 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if (StationDownLoadController.getInstance().isPaused){
-                    stationDownLoadManager.PauseDownload(false);
+                    stationDownLoadManager.pauseDownload(false);
                 }else {
-                    stationDownLoadManager.PauseDownload(true);
+                    stationDownLoadManager.pauseDownload(true);
                 }
+            }
+        });
+
+        View tv_del= findViewById(R.id.tv_del);
+        tv_del.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                stationDownLoadManager.removeData( new Gson().toJson(StationDownLoadController.getInstance().currentBean));
             }
         });
 

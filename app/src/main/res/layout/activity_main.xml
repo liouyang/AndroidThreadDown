@@ -36,6 +36,15 @@
         android:background="#333"
         android:layout_gravity="end|bottom"
         />
-
+    <androidx.appcompat.widget.AppCompatTextView
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:text="删除"
+        android:id="@+id/tv_del"
+        android:gravity="center"
+        android:textColor="#fff"
+        android:background="#333"
+        android:layout_gravity="start|bottom"
+        />
 
 </FrameLayout>

@@ -9,6 +9,7 @@ import android.content.Context;
  * Time:27
  */
 public class GlobalConstans {
-
+    public static String deviceId;
+    public static String referer;
     public static Context context;
 }

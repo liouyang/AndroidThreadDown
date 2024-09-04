@@ -181,6 +181,71 @@ public class ContentProviderHelper {
     }
 
 
+    /**
+     * 查询有没有在下载中的任务表
+     * @param context
+     * @return
+     */
+    public static DownLoadBean queryTableByUrl(Context context,String selection,String[] selectionArgs){
+
+        // 执行查询
+        Cursor cursor =context. getContentResolver().query(
+                DownLoadContentProvider.SSID_CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                null
+        );
+
+        // 处理查询结果
+        if (cursor != null && cursor.moveToFirst()) {
+            DownLoadBean downLoadBean = new DownLoadBean();
+
+            do {
+                int id1 = cursor.getColumnIndex("id");
+                int id = cursor.getInt(id1);
+                downLoadBean.id=id;
+                int name1 = cursor.getColumnIndex("name");
+                String name = cursor.getString(name1);
+                downLoadBean.name=name;
+                int iconUrl1 = cursor.getColumnIndex("iconUrl");
+                String iconUrl = cursor.getString(iconUrl1);
+                downLoadBean.iconUrl=iconUrl;
+                int localPath1 = cursor.getColumnIndex("localPath");
+                String localPath = cursor.getString(localPath1);
+                downLoadBean.localPath=localPath;
+                int fileUrl1 = cursor.getColumnIndex("fileUrl");
+                String fileUrl = cursor.getString(fileUrl1);
+                downLoadBean.fileUrl=fileUrl;
+                int fileMd51 = cursor.getColumnIndex("fileMd5");
+                String fileMd5 = cursor.getString(fileMd51);
+                downLoadBean.fileMd5=fileMd5;
+                int fileSize1 = cursor.getColumnIndex("fileSize");
+                long fileSize = cursor.getLong(fileSize1);
+                downLoadBean.fileSize=fileSize;
+                int createDate1 = cursor.getColumnIndex("createDate");
+                String createDate = cursor.getString(createDate1);
+                downLoadBean.createDate=createDate;
+                int downState1 = cursor.getColumnIndex("downState");
+                int downState = cursor.getInt(downState1);
+                downLoadBean.downState=downState;
+                int downLoadedSize1 = cursor.getColumnIndex("downLoadedSize");
+                long downLoadedSize = cursor.getLong(downLoadedSize1);
+                downLoadBean.downLoadedSize=downLoadedSize;
+                // 在这里处理每一行的数据，例如：
+                System.out.println("ID: " + id + ", Name: " + name + ", State: " + downState);
+
+            } while (cursor.moveToNext());
+
+            cursor.close(); // 使用完 Cursor 后一定要关闭
+
+            return downLoadBean;
+        }
+
+        return null;
+    }
+
+
 
     /**
      * 查询有没有在下载中的任务表

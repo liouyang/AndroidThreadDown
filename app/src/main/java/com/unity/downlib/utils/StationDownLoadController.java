@@ -14,6 +14,7 @@ import android.os.Looper;
 import android.os.PowerManager;
 import android.util.Log;
 
+import com.google.gson.Gson;
 import com.unity.downlib.bean.DownLoadBean;
 import com.unity.downlib.bean.TaskState;
 import com.unity.downlib.bean.ThreadBean;
@@ -87,6 +88,8 @@ public class StationDownLoadController {
 
     private static volatile StationDownLoadController instance;
 
+    public volatile int netRetry=3;
+
     public static StationDownLoadController getInstance() {
         if (instance == null) {
             synchronized (StationDownLoadController.class) {
@@ -149,18 +152,32 @@ public class StationDownLoadController {
                     //网络连接
                     Log.d("网络", "===网络连接=====<>");
                     //所有的都完成了
-
                     if (mDownloadActionListener != null) {
+                        System.out.println("网络连接！");
                         mHandler.post(() -> mDownloadActionListener.networkConnection());
                     }
+                    initLastDownTask();
                 } else {
                     Log.d("网络", "===网络断开=====<>");
                     if (mDownloadActionListener != null) {
+                        System.out.println("网络断开！");
                         mHandler.post(() -> mDownloadActionListener.networkDisconnection());
                     }
-                    pause();
+//                    pause();
+                    updateLoadingToError();
                 }
             }
+        }
+    }
+
+    private void updateLoadingToError() {
+        String selection = "downState = ?";
+        String[] selectionArgs = {TaskState.Downloading + ""};
+        //有下载的中的把下载展厅
+        DownLoadBean downLoadBean = ContentProviderHelper.queryTable(GlobalConstans.context, selection, selectionArgs);
+        if (downLoadBean!=null){
+         ContentProviderHelper.updateDownLoadStateTable(GlobalConstans.context, downLoadBean.downState, downLoadBean.name, TaskState.Error);
+
         }
     }
 
@@ -170,23 +187,19 @@ public class StationDownLoadController {
     }
 
     public void initLastDownTask() {
-        String selection = "downState = ?";
-        String[] selectionArgs = {TaskState.Pause + ""};
+        if (!NetworkUtils.isNetworkAvailable(GlobalConstans.context)) {
+            //无网络
+            System.out.println("无网络");
+            return;
+        }
+
+        String selectionError = "downState = ?";
+        String[] selectionArgsError = {TaskState.Error + ""};
         //查询又没有暂停的任务
-        DownLoadBean downLoadBean = ContentProviderHelper.queryTable(GlobalConstans.context, selection, selectionArgs);
-        if (downLoadBean != null) {
-            isPaused = true;
-            //初始化进度总值的大小
-            mLoadedLen = new AtomicLong(downLoadBean.downLoadedSize);
-        } else {
-            //查询又没有下载的的任务
-            String selection2 = "downState = ?";
-            String[] selectionArgs2 = {TaskState.Downloading + ""};
-            //有下载的中的把下载继续
-            DownLoadBean downLoadBean2 = ContentProviderHelper.queryTable(GlobalConstans.context, selection2, selectionArgs2);
-
+        DownLoadBean downLoadBeanError = ContentProviderHelper.queryTable(GlobalConstans.context, selectionError, selectionArgsError);
+        if (downLoadBeanError!=null){
             List<ThreadBean> threadBeans = ContentProviderHelper.queryAllThreadDate(GlobalConstans.context);
-
+            ContentProviderHelper.updateDownLoadStateTable(GlobalConstans.context, downLoadBeanError.downState, downLoadBeanError.name, TaskState.Downloading);
             if (threadBeans != null && threadBeans.size() > 0) {
                 long size = 0;
                 Log.d("初始进度", "--------========片" + size);
@@ -195,9 +208,40 @@ public class StationDownLoadController {
                     size += threadBean.downLength;
                 }
                 mLoadedLen = new AtomicLong(size);
-                createTask(downLoadBean2);
+                createTask(downLoadBeanError);
+            }
+        }else {
+
+            String selection = "downState = ?";
+            String[] selectionArgs = {TaskState.Pause + ""};
+            //查询又没有暂停的任务
+            DownLoadBean downLoadBean = ContentProviderHelper.queryTable(GlobalConstans.context, selection, selectionArgs);
+            if (downLoadBean != null) {
+                isPaused = true;
+                //初始化进度总值的大小
+                mLoadedLen = new AtomicLong(downLoadBean.downLoadedSize);
+            } else {
+                //查询又没有下载的的任务
+                String selection2 = "downState = ?";
+                String[] selectionArgs2 = {TaskState.Downloading + ""};
+                //有下载的中的把下载继续
+                DownLoadBean downLoadBean2 = ContentProviderHelper.queryTable(GlobalConstans.context, selection2, selectionArgs2);
+
+                List<ThreadBean> threadBeans = ContentProviderHelper.queryAllThreadDate(GlobalConstans.context);
+
+                if (threadBeans != null && threadBeans.size() > 0) {
+                    long size = 0;
+                    Log.d("初始进度", "--------========片" + size);
+                    for (int i = 0; i < threadBeans.size(); i++) {
+                        ThreadBean threadBean = threadBeans.get(i);
+                        size += threadBean.downLength;
+                    }
+                    mLoadedLen = new AtomicLong(size);
+                    createTask(downLoadBean2);
+                }
             }
         }
+
 
     }
 
@@ -208,6 +252,7 @@ public class StationDownLoadController {
         if (i != 0) {
             //移除成功
             if (mDownloadActionListener != null) {
+                System.out.println("removeBeanTask！=成功=>"+new Gson().toJson(bean));
                 mHandler.post(() -> mDownloadActionListener.removeSuccess(bean));
             }
         }
@@ -217,6 +262,10 @@ public class StationDownLoadController {
 
     // 暂停下载
     public void pause() {
+        stopWakeLocak();
+        if (mDownLoadThreads == null) {
+            return;
+        }
         if (isPaused) {
             return;
         }
@@ -230,13 +279,13 @@ public class StationDownLoadController {
             if (i > 0) {
                 //更新
                 if (mDownloadActionListener != null) {
+                    System.out.println("pause！=成功=>"+new Gson().toJson(downLoadBean));
+
                     mHandler.post(() -> mDownloadActionListener.pauseOrResumeDownloadSuccess(downLoadBean));
                 }
             }
         }
-        if (mDownLoadThreads == null) {
-            return;
-        }
+
         for (DownLoadThread downLoadThread : mDownLoadThreads) {
             downLoadThread.isDownLoading = false;
             isDownLoading = false;
@@ -248,11 +297,11 @@ public class StationDownLoadController {
 
     // 恢复下载
     public void resume() {
-        if (!isPaused) {
-            return;
-        }
         if (!NetworkUtils.isNetworkAvailable(GlobalConstans.context)) {
             //无网络
+            return;
+        }
+        if (!isPaused) {
             return;
         }
         isPaused = false;
@@ -265,6 +314,8 @@ public class StationDownLoadController {
             if (i > 0) {
                 //更新
                 if (mDownloadActionListener != null) {
+                    System.out.println("resume！=成功=>"+new Gson().toJson(downLoadBean));
+
                     mHandler.post(() -> mDownloadActionListener.pauseOrResumeDownloadSuccess(downLoadBean));
                 }
             }
@@ -275,6 +326,14 @@ public class StationDownLoadController {
     public void addDownLoadTask(DownLoadBean bean) {
         if (!NetworkUtils.isNetworkAvailable(GlobalConstans.context)) {
             //无网络
+            return;
+        }
+        // 定义查询条件
+        String selectionConditions = "fileUrl = ?";
+        String[] selectionArgsConditions = {bean.fileUrl + ""};
+        //已经在下载中队列中return
+        DownLoadBean downLoadBean3 =ContentProviderHelper.queryTableByUrl(GlobalConstans.context, selectionConditions, selectionArgsConditions);
+        if (downLoadBean3!=null){
             return;
         }
         // 定义查询条件
@@ -298,6 +357,8 @@ public class StationDownLoadController {
             if (uri != null) {
                 //加入成功
                 if (mDownloadActionListener != null) {
+                    System.out.println("addDownLoadTask！有暂停任务=成功=>"+new Gson().toJson(downLoadBean));
+
                     mHandler.post(() -> mDownloadActionListener.addSuccess(bean));
                 }
             }
@@ -309,6 +370,8 @@ public class StationDownLoadController {
                 if (uri != null) {
                     //加入成功
                     if (mDownloadActionListener != null) {
+                        System.out.println("addDownLoadTask有下载任务！=成功=>"+new Gson().toJson(downLoadBean));
+
                         mHandler.post(() -> mDownloadActionListener.addSuccess(bean));
                     }
                 }
@@ -318,6 +381,8 @@ public class StationDownLoadController {
                 if (uri != null) {
                     //加入成功
                     if (mDownloadActionListener != null) {
+                        System.out.println("addDownLoadTask！无下载无暂停=成功=>"+new Gson().toJson(downLoadBean));
+
                         mHandler.post(() -> mDownloadActionListener.addSuccess(bean));
                     }
                 }
@@ -334,6 +399,7 @@ public class StationDownLoadController {
             //无网络
             return;
         }
+        netRetry=3;
         scheduler = Executors.newScheduledThreadPool(1);
         mDownLoadThreads = new ArrayList<>();
         startWakeLock();
@@ -374,6 +440,7 @@ public class StationDownLoadController {
             DownLoadThread thread = new DownLoadThread(info);//创建下载线程
             sExe.execute(thread);//开始线程
             thread.isDownLoading = true;
+            thread.isFail = false;
             isDownLoading = true;
             mDownLoadThreads.add(thread);//开始下载时将该线程加入集合
         }
@@ -437,6 +504,8 @@ public class StationDownLoadController {
         public volatile boolean isDownLoading;//是否在下载
         File file = null;
 
+        public volatile boolean isFail;//是否失败
+
         public DownLoadThread(ThreadBean info) {
             mThreadBean = info;
         }
@@ -477,6 +546,8 @@ public class StationDownLoadController {
                 connection.setReadTimeout(10000); // 10秒读取超时
                 // 设置请求头信息
                 connection.setRequestProperty("Range", "bytes=" + start + "-" + end);  // 设置下载的区间
+                connection.setRequestProperty("key", GlobalConstans.deviceId); // 自定义 key 请求头
+                connection.setRequestProperty("Referer", GlobalConstans.referer); // 设置 Referer 请求头
                 connection.setRequestMethod("GET");
                 connection.connect();
 
@@ -492,9 +563,11 @@ public class StationDownLoadController {
                     while ((len = inputStream.read(buffer)) != -1) {
                         // 写入文件
                         randomAccessFile.write(buffer, 0, len);
-                        mLoadedLen.addAndGet(len); // 更新已下载总进度
-                        mThreadBean.downLength += len; // 更新当前线程下载进度
-
+                        synchronized (this){
+                            long currentProgress = mLoadedLen.addAndGet(len); // 更新已下载总进度
+                            Log.d(TAG, "当前进度更新: " + currentProgress + " 线程: " + Thread.currentThread().getName());
+                            mThreadBean.downLength += len; // 更新当前线程下载进度
+                        }
                         // 暂停时保存下载进度
                         if (!this.isDownLoading) {
 
@@ -514,9 +587,15 @@ public class StationDownLoadController {
 
 
                 } else {
+                    Log.d(TAG,"===失败========>"+"连接失败");
+                    isDownLoading = false;
+                    isFail = true;
                     saveData();
                 }
             } catch (Exception e) {
+                Log.d(TAG,"======失败=====>"+e.getMessage());
+                isDownLoading = false;
+                isFail = true;
                 e.printStackTrace();
                 saveData();
             } finally {
@@ -541,16 +620,23 @@ public class StationDownLoadController {
             }
         }
 
-        private void saveData() {
-
-            if (mDownloadActionListener != null) {
-                mHandler.post(() -> mDownloadActionListener.onFail(currentBean));
-            }
+        private synchronized void saveData() {
 
             ContentProviderHelper.updateThreadTable(GlobalConstans.context, mThreadBean.threadName,
                     mThreadBean.downLength);
+
             ContentProviderHelper.updateDownLoadLengthTableByUrl(GlobalConstans.context, mThreadBean.url,
                     mLoadedLen.get());
+
+            if (mThreadBean.id==mThreadCount-1){
+
+                    if (mDownloadActionListener != null) {
+                        System.out.println("onFail=成功=>"+new Gson().toJson(currentBean));
+
+                        mHandler.post(() -> mDownloadActionListener.onFail(currentBean));
+                    }
+            }
+
         }
 
 
@@ -578,10 +664,21 @@ public class StationDownLoadController {
                         System.out.println("文件校验一致");
                         updateSchedule();
                         stopProgressUpdate();
+                        String localPath = currentBean.localPath;
+                        File oldFile = new File(localPath);
+                        // 创建新的文件名，包含.mp4后缀
+                        File newFile = new File(oldFile.getParent(), oldFile.getName() + ".mp4");
 
-                        if (mDownloadActionListener != null) {
-                            mHandler.post(() -> mDownloadActionListener.onCompleteOnlyOne(currentBean));
+                        // 重命名文件
+                        boolean renamed = oldFile.renameTo(newFile);
+
+                        if (renamed) {
+                            System.out.println("文件重命名成功！");
+                        } else {
+                            System.out.println("文件重命名失败！");
                         }
+                        currentBean.localPath=newFile.toString();
+
                         //下载完成，删除线程信息
                         ContentProviderHelper.deleterThreadTable(GlobalConstans.context, mThreadBean.url);
                         ContentProviderHelper.deleterDownLoadStateTable(GlobalConstans.context, mThreadBean.url);
@@ -591,6 +688,8 @@ public class StationDownLoadController {
                         System.out.println("文件校验不一致");
 
                         if (mDownloadActionListener != null) {
+                            System.out.println("文件校验不一致=onFail=>"+new Gson().toJson(currentBean));
+
                             mHandler.post(() -> mDownloadActionListener.onFail(currentBean));
                         }
                     }
@@ -618,11 +717,22 @@ public class StationDownLoadController {
             DownLoadBean downLoadBean = downLoadBeans.get(0);
             ContentProviderHelper.updateDownLoadStateTable(GlobalConstans.context, downLoadBean.downState, downLoadBean.name, TaskState.Downloading);
             downLoadBean.downState = TaskState.Downloading;
+            if (mDownloadActionListener != null) {
+                System.out.println("onCompleteOnlyOne=成功=>"+new Gson().toJson(currentBean));
+
+                mHandler.post(() -> mDownloadActionListener.onCompleteOnlyOne(currentBean));
+            }
             createTask(downLoadBean);
         } else {
+            if (mDownloadActionListener != null) {
+                System.out.println("onCompleteOnlyOne=成功=>"+new Gson().toJson(currentBean));
+
+                mHandler.post(() -> mDownloadActionListener.onCompleteOnlyOne(currentBean));
+            }
             //所有的都完成了
             stopWakeLocak();
             if (mDownloadActionListener != null) {
+                System.out.println("所有任务都完成了！");
                 mHandler.post(() -> mDownloadActionListener.onCompleteAll());
             }
         }
